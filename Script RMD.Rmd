@@ -1,0 +1,407 @@
+---
+title: "Lichess Project"
+author: "Ferchero Juan Guillermo (@guilleadhonorem)^[ _Soy sociólogo (FSOC-UBA). Me dedico al analisis de datos en temas como el estudio de la opinión pública, comportamiento electoral, analisis de texto, redes sociales y consumos culturales, todo mediante R y Phyton. Dirijo el Observatorio de Opinión Publica  en_ [ACDES](http://www.acdesweb.org/) _y escribo en_ [mi blog de temas de R](https://rpubs.com/guilleferchero) _y en_ [mi blog de temas de generales](https://bitacoramodernablog.wordpress.com). _Contacto_: guilleferchero@gmail.com]"
+date: "Abril de 2021"
+output:
+  html_document:
+    code_download: true
+    code_folding: hide
+    toc: TRUE
+    depth: 5
+subtitle: Base para app de analisis de datos Lichess
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Proyecto Lichessapp 
+
+A continuación veremos algunos análisis de los datos que pueden extraerse de la API de [lichess](https://lichess.com). El objetivo de esta publicación es diseñar las visualizaciones para una futura app.
+
+```{r inicio, message=FALSE, warning=FALSE, include=FALSE}
+#Limpiamos memoria
+
+rm(list = ls())
+
+#Instalamos Librerías
+
+#install.packages("DT")
+library("DT")
+library(tidyverse)
+library(lubridate)
+library(kableExtra)
+library(plotly)
+library("chessR")
+
+# Levantamos ultimos datos
+usuario <- "Guillebarracas"
+Datos <- get_raw_lichess(usuario)
+#base <- write.csv(Datos, "base.csv")
+
+
+# limpieza
+
+
+
+### tiempo es -3
+
+Datos$WhiteElo <- as.numeric(Datos$WhiteElo)
+
+Datos$BlackElo <- as.numeric(Datos$BlackElo)
+
+Datos <- Datos %>% 
+  mutate(Color = case_when(White == "Guillebarracas"~"Blanco",
+                           TRUE ~ "Negro" ),
+         Elo = case_when(Color == "Blanco" ~ WhiteElo,
+                         TRUE ~ BlackElo),
+         Elo_Rival = case_when(Color == "Blanco" ~ BlackElo,
+                         TRUE ~ WhiteElo),
+         Dif_Elo = Elo-Elo_Rival,
+         Resultado = case_when(Color == "Blanco" & Result == "1-0" ~ "Victoria",
+                               Color == "Blanco" & Result == "0-1" ~ "Derrota",
+                               Color == "Negro" & Result == "0-1" ~ "Victoria",
+                               Color == "Negro" & Result == "1-0" ~ "Derrota",
+                               TRUE ~ "Tablas"),
+         Fecha = as.Date(ymd(paste0(substr(Date,1,4),substr(Date,6,7),substr(Date,9,10)))),
+         Hora = as.numeric(substr(UTCTime,1,2)),
+         Hora_arg = case_when(Hora == 3 ~ 0,
+                              Hora == 2 ~ 23,
+                              Hora == 1 ~ 22,
+                              Hora == 0 ~ 21,
+                              TRUE ~ (Hora - 3)),
+         Hora_intervalo = case_when(Hora_arg >= 8 & Hora_arg <= 13 ~ "Mañana",
+                                    Hora_arg >= 14 & Hora_arg <= 19 ~ "Tarde",
+                                    TRUE ~ "Noche"),
+         weekday = wday(Fecha,1),
+         Mes = month(Fecha))
+
+Basepract <- Datos %>% 
+  head(1000)
+
+write.csv(Basepract,"Basepract.csv")
+
+
+#definimos desde y hasta
+
+cant <- nrow(Datos)
+
+Desde <- min(Datos$Fecha)
+
+Hasta <- max(Datos$Fecha)
+
+#Definimos colores
+
+negro <- "#0c0c0c"
+gris1 <- "#585757"
+gris2 <- "#727171"
+blanco <- "#f9f9f9"
+
+DatosBlitz <-  Datos %>%
+                 filter(TimeControl == "300+3")
+
+
+```
+
+## Resumen
+
+La base contiene `r cant` de partidas jugadas desde `r Desde` hasta `r Hasta` por el usuario `r usuario`
+
+# Gráfico 1 ( Sectores win/lose )
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+Tabla_1 <- DatosBlitz %>% 
+  select(Resultado) %>% 
+  group_by(Resultado) %>% 
+  summarise(Total = n()) %>% 
+  mutate(Porcentaje = round(Total/sum(Total)*100,1)) %>% 
+  mutate(Etiqueta = paste0(Total, " (% ", Porcentaje, ")"))
+
+ggplot(Tabla_1, aes(x = "" , y = Total, fill = Resultado ))+
+  geom_bar(stat = "identity", width = 0.5)+
+  geom_text(aes(label = Etiqueta), position = position_stack(vjust = 0.5),
+            color = case_when(
+              Tabla_1$Resultado == "Victoria" ~ "black",
+              Tabla_1$Resultado == "Derrota" ~ "white",
+              Tabla_1$Resultado == "Tablas" ~ "#ada9a9",
+            ))+
+  scale_fill_manual(values = c("#272643", "#e3f6f5", "#2c698d"))+
+    labs(title = paste0("Resumen resultados totales ",Desde, " - ", Hasta),
+       subtitle = "",
+       caption = "Fuente: API Lichess",
+       x = "",
+       y = "")+
+  theme_minimal()+
+  theme(text = element_text(family = "Decima WE", color = "grey20"),
+        plot.title = element_text(family = "Times New Roman", hjust = 0.5, vjust = 0.5),
+        plot.subtitle = element_text( hjust = 0.5, vjust = 0.5),
+        legend.position = "bottom",
+        legend.title = element_blank())+
+  guides(fill = guide_legend(reverse = TRUE))+
+  coord_flip()
+
+#rf
+
+
+```
+# Gráfico 1.1 ( Sectores win/lose por Elo inf )
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+Tabla_1 <- DatosBlitz %>%
+  filter(Dif_Elo>0) %>% 
+  select(Resultado) %>% 
+  group_by(Resultado) %>% 
+  summarise(Total = n()) %>% 
+  mutate(Porcentaje = round(Total/sum(Total)*100,1)) %>% 
+  mutate(Etiqueta = paste0(Total, " (% ", Porcentaje, ")"))
+
+ggplot(Tabla_1, aes(x = "" , y = Total, fill = Resultado ))+
+  geom_bar(stat = "identity", width = 0.5)+
+  geom_text(aes(label = Etiqueta), position = position_stack(vjust = 0.5),
+            color = case_when(
+              Tabla_1$Resultado == "Victoria" ~ "black",
+              Tabla_1$Resultado == "Derrota" ~ "white",
+              Tabla_1$Resultado == "Tablas" ~ "#ada9a9",
+            ))+
+  scale_fill_manual(values = c("#272643", "#e3f6f5", "#2c698d"))+
+    labs(title = paste0("Resumen resultados con rival Elo Inferior ",Desde, " - ", Hasta),
+       subtitle = "",
+       caption = "Fuente: API Lichess",
+       x = "",
+       y = "")+
+  theme_minimal()+
+  theme(text = element_text(family = "Decima WE", color = "grey20"),
+        plot.title = element_text(family = "Times New Roman", hjust = 0.5, vjust = 0.5),
+        plot.subtitle = element_text( hjust = 0.5, vjust = 0.5),
+        legend.position = "bottom",
+        legend.title = element_blank())+
+  guides(fill = guide_legend(reverse = TRUE))+
+  coord_flip()
+
+
+```
+
+# Gráfico 1.1 ( Sectores win/lose por Elo sup )
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+Tabla_1 <- DatosBlitz %>%
+  filter(Dif_Elo<0) %>% 
+  select(Resultado) %>% 
+  group_by(Resultado) %>% 
+  summarise(Total = n()) %>% 
+  mutate(Porcentaje = round(Total/sum(Total)*100,1)) %>% 
+  mutate(Etiqueta = paste0(Total, " (% ", Porcentaje, ")"))
+
+ggplot(Tabla_1, aes(x = "" , y = Total, fill = Resultado ))+
+  geom_bar(stat = "identity", width = 0.5)+
+  geom_text(aes(label = Etiqueta), position = position_stack(vjust = 0.5),
+            color = case_when(
+              Tabla_1$Resultado == "Victoria" ~ "black",
+              Tabla_1$Resultado == "Derrota" ~ "white",
+              Tabla_1$Resultado == "Tablas" ~ "#ada9a9",
+            ))+
+  scale_fill_manual(values = c("#272643", "#e3f6f5", "#2c698d"))+
+    labs(title = paste0("Resumen resultados con rival Elo Superior ",Desde, " - ", Hasta),
+       subtitle = "",
+       caption = "Fuente: API Lichess",
+       x = "",
+       y = "")+
+  theme_minimal()+
+  theme(text = element_text(family = "Decima WE", color = "grey20"),
+        plot.title = element_text(family = "Times New Roman", hjust = 0.5, vjust = 0.5),
+        plot.subtitle = element_text( hjust = 0.5, vjust = 0.5),
+        legend.position = "bottom",
+        legend.title = element_blank())+
+  guides(fill = guide_legend(reverse = TRUE))+
+  coord_flip()
+
+
+```
+
+#Gráfico 2 ( Evolutivo elo )
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+
+DatosBlitz <-  Datos %>%
+                 filter(TimeControl == "300+3")
+
+fig1 <- ggplot(DatosBlitz, aes(x = Fecha, y = Elo))+ #seleccionamos variables a graficar y a colorear
+  geom_line(color = "#2c698d")+
+  geom_point(color = "#2c698d")+
+  # geom_smooth(method = 'loess',
+  #             formula = 'y ~ x')+
+  geom_hline(yintercept = mean(DatosBlitz$Elo),
+             color =  "#000066")+
+  labs(title = paste0("   Evolutivo Elo ",Desde," - ",Hasta),
+       subtitle = "Evolución Ranking Elo",
+       caption = "API Lichess",
+       y = "Elo",
+       x = "Fecha",
+       yintercept = "Promedio")+
+  scale_color_manual(values = c("#2c698d"))+ #coloreamos las lineas
+  scale_x_date(date_breaks = "1 month",date_labels = "%b-%y")+
+  theme_minimal()+
+  theme(plot.title = element_text( hjust = 0.5 , vjust = 0.5),
+        plot.subtitle = element_text( hjust = 0.5 , vjust = 0.5))
+
+
+fig1 <- ggplotly(fig1, dynamicTicks = T) %>%
+    layout(
+         xaxis = list(rangeslider = list(visible = T),
+                      rangeselector=list(
+                        buttons=list(
+                          list(count=1, label="1m", step="month", stepmode="todate"),
+                          list(count=6, label="6m", step="month", stepmode="todate"),
+                          list(count=1, label="YTD", step="year", stepmode="todate"),
+                          list(count=1, label="1y", step="year", stepmode="backward"),
+                          list(step="all", label="Todos")#NO FUNCIONAN LOS BOTONES (Up: Se arreglo con la función "dynamicTicks")
+                        ))))
+
+fig1
+
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+
+EloPromedio = round(mean(DatosBlitz$Elo),2)
+
+fig2 <- ggplot(DatosBlitz, aes(x = Fecha, y = Elo, color = Resultado, text = paste0("Elo Rival: ",Elo_Rival)))+ #seleccionamos variables a graficar y a colorear
+  geom_point()+
+  geom_hline(yintercept = EloPromedio,
+             color =  gris1, linetype = "dashed", name = "Elo Promedio")+
+  annotate(geom = "text",x = Desde, y = EloPromedio+10, label = paste0("      Promedio: ",EloPromedio))+
+  labs(title = paste0("Partidas Lichess ",Desde," - ",Hasta),
+       subtitle = "Evolución Ranking Elo",
+       caption = "API Lichess",
+       y = "Elo",
+       x = "Fecha",
+       yintercept = "Promedio")+
+  scale_x_date(date_breaks = "1 month",date_labels = "%b-%y")+
+  scale_color_manual(values = c("#2c698d","#e3f6f5","#272643"))+
+  theme_minimal()+
+  theme(plot.title = element_text( hjust = 0.5 , vjust = 0.5),
+        plot.subtitle = element_text( hjust = 0.5 , vjust = 0.5))
+
+
+fig2 <- ggplotly(fig2, dynamicTicks = T) %>%
+    layout(#autosize = F, width = 1000, height = 500,
+         xaxis = list(rangeslider = list(visible = T),
+                      rangeselector=list(
+                        buttons=list(
+                          list(count=1, label="1m", step="month", stepmode="backward"),
+                          list(count=6, label="6m", step="month", stepmode="backward"),
+                          list(count=1, label="YTD", step="year", stepmode="todate"),
+                          list(count=1, label="1y", step="year", stepmode="backward"),
+                          list(step="all")#NO FUNCIONAN LOS BOTONES
+                        ))))
+
+fig2
+
+
+
+```
+
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+#Arreglar gráfico
+
+Tabla1 <- DatosBlitz %>%
+  select(weekday,Resultado) %>%
+  group_by(weekday,Resultado) %>%
+  summarise(Total = n()) %>%
+  mutate(Porcentaje = round(Total/sum(Total)*100,1))%>%
+  mutate(Etiqueta = paste0(" (% ", Porcentaje, ")"))
+
+
+fig3 <- ggplot(Tabla1, aes( x =weekday , y = Porcentaje, fill = Resultado))+
+  geom_bar( stat = "identity", width = 0.8)+
+  geom_text(aes(label = Etiqueta), position = position_stack(vjust = 0.5),
+            color = case_when(
+              Tabla1$Resultado == "Victoria" ~ "black",
+              Tabla1$Resultado == "Derrota" ~ "white",
+              Tabla1$Resultado == "Tablas" ~ "#ada9a9",
+            ))+
+  scale_fill_manual(values = c("#272643", "#e3f6f5", "#2c698d"))+
+    labs(title = paste0("Resultado según dia de semana ",Desde," - ",Hasta),
+       subtitle = "Evolución Ranking Elo",
+       caption = "API Lichess",
+       y = "%",
+       x = "Día de semana",
+       yintercept = "Promedio")+
+  theme_minimal()
+
+fig3 <- ggplotly(fig3)
+
+fig3
+
+#reparado
+
+
+```
+
+
+
+
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+
+Tabla2 <- DatosBlitz %>%
+  select(Hora_intervalo,Resultado) %>%
+  group_by(Hora_intervalo,Resultado) %>%
+  summarise(Total = n()) %>%
+  mutate(Porcentaje = round(Total/sum(Total)*100,1))%>%
+  mutate(Etiqueta = paste0(" (% ", Porcentaje, ")"))
+
+
+fig3 <- ggplot(Tabla2, aes( x =Hora_intervalo , y = Porcentaje, fill = Resultado))+
+  geom_bar( stat = "identity", width = 0.8)+
+  geom_text(aes(label = Etiqueta), position = position_stack(vjust = 0.5),
+            color = case_when(
+              Tabla2$Resultado == "Victoria" ~ "black",
+              Tabla2$Resultado == "Derrota" ~ "white",
+              Tabla2$Resultado == "Tablas" ~ "#ada9a9",
+            ))+
+  scale_fill_manual(values = c("#272643", "#e3f6f5", "#2c698d"))+
+    labs(title = paste0("Resultado según momento del día ",Desde," - ",Hasta),
+       subtitle = "Evolución Ranking Elo",
+       caption = "API Lichess",
+       y = "%",
+       x = "momento del día",
+       yintercept = "Promedio")+
+  theme_minimal()
+
+fig3 <- ggplotly(fig3)
+
+fig3
+
+#FALTA REORGANIZAR CATEGORÍAS
+
+
+```
+
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+
+datahead <- DatosBlitz %>% 
+  select(c(Site:BlackElo)) %>% 
+  mutate(Enlace = paste0("<a href='", Site, "' target= '_blank'>", "Ver Partida", "</a>")) %>% 
+  head(20)
+
+tabla1 <- datatable(datahead, escape = FALSE)
+
+tabla1
+
+
+
+```
+
+
+
+
