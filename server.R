@@ -16,6 +16,9 @@ server <- function(input,output, session) {
                                    Color == "Negro" & Result == "0-1" ~ "Victoria",
                                    Color == "Negro" & Result == "1-0" ~ "Derrota",
                                    TRUE ~ "Tablas"),
+            WhiteRatingDiff = as.numeric(as.character(WhiteRatingDiff)),
+            BlackRatingDiff = as.numeric(as.character(BlackRatingDiff)),
+            #Elo_Actual = Elo+WhiteRatingDiff,
             Fecha = as.Date(ymd(paste0(substr(Date,1,4),substr(Date,6,7),substr(Date,9,10)))),
             Hora = as.numeric(substr(UTCTime,1,2)),
             Hora_arg = case_when(Hora == 3 ~ 0,
@@ -50,10 +53,17 @@ server <- function(input,output, session) {
                head(1), "Fecha 1era partida", color = "light-blue")
   })
   
-  output$fechafin <- renderValueBox({
-    valueBox(dataInput() %>% 
-               select(Elo) %>% 
-               mean(), "Fecha ultima partida", color = "green")###############ver
+  output$winrate <- renderValueBox({
+      valueBox(dataInput() %>%
+                 filter(TimeControl == "300+3") %>%
+                 head(30) %>% 
+                 group_by(Resultado) %>% 
+                 summarise(Total = n()) %>% 
+                 mutate(Porcentaje = round(Total/sum(Total)*100,1)) %>%
+                 mutate(Etiqueta = paste0(Total, " (% ", Porcentaje, ")")) %>% 
+                 filter(Resultado == "Victoria") %>%
+                 select(Etiqueta) %>% 
+                 pull() ,"Winrate últimas 30 partidas", color = "green")###############ver
   })
   
   
@@ -102,7 +112,8 @@ server <- function(input,output, session) {
   })
   
   
-  output$table <- renderDT(dataInput() %>% 
+  output$table <- renderDT(dataInput() %>%
+                             select(!c(Event,Date,UTCDate)) %>% 
                              mutate(Enlace = paste0("<a href='", Site, "' target= '_blank'>", "Ver Partida", "</a>")), 
                            escape = FALSE,
                            options = list(scrollX = TRUE))

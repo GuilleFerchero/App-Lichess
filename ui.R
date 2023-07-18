@@ -17,9 +17,13 @@ dashboardPage(
     tabItems(
       tabItem(tabName = "dashboard",
         fluidRow(
-          valueBoxOutput("partidas", width = 4),
-          valueBoxOutput("fechaini", width = 4),
-          valueBoxOutput("fechafin", width = 4)),
+          valueBoxOutput("partidas", width = 2),
+          valueBoxOutput("fechaini", width = 2),
+          valueBoxOutput("winrate", width = 2)),
+        fluidRow(
+          valueBoxOutput("partidas1", width = 2),
+          valueBoxOutput("fechaini1", width = 2),
+          valueBoxOutput("winrate1", width = 2)),
         fluidRow(
           box(plotlyOutput("plot1"), width = 4),
           box(plotlyOutput("plot2"), width = 8))),
