@@ -18,7 +18,9 @@ server <- function(input,output, session) {
                                    TRUE ~ "Tablas"),
             WhiteRatingDiff = as.numeric(as.character(WhiteRatingDiff)),
             BlackRatingDiff = as.numeric(as.character(BlackRatingDiff)),
-            #Elo_Actual = Elo+WhiteRatingDiff,
+            Elo_Actual=ifelse(Color == "Blanco",
+                              as.numeric(Elo)+WhiteRatingDiff,
+                              as.numeric(Elo)+BlackRatingDiff),
             Fecha = as.Date(ymd(paste0(substr(Date,1,4),substr(Date,6,7),substr(Date,9,10)))),
             Hora = as.numeric(substr(UTCTime,1,2)),
             Hora_arg = case_when(Hora == 3 ~ 0,
@@ -38,11 +40,11 @@ server <- function(input,output, session) {
     paste("El usuario ", input$usuario, "registra un total de ", nrow(dataInput()), "partidas")
   })
     
-  output$partidas <- renderValueBox({
+  output$eloactual <- renderValueBox({
     valueBox(dataInput() %>% 
-               select(Fecha, Elo) %>% 
+               select(Fecha, Elo_Actual) %>% 
                arrange(desc(Fecha)) %>%
-               select(Elo) %>% 
+               select(Elo_Actual) %>% 
                head(1),"Elo actual", color = "aqua")
   })
 
@@ -63,10 +65,43 @@ server <- function(input,output, session) {
                  mutate(Etiqueta = paste0(Total, " (% ", Porcentaje, ")")) %>% 
                  filter(Resultado == "Victoria") %>%
                  select(Etiqueta) %>% 
-                 pull() ,"Winrate últimas 30 partidas", color = "green")###############ver
+                 pull() ,"Winrate últimas 30 partidas", color = "green")
   })
   
+ 
+  output$winraten <- renderValueBox({
+    valueBox(dataInput() %>%
+               #filter(TimeControl == "300+3") %>%
+               filter(Color == "Negro") %>% 
+               group_by(Resultado) %>% 
+               summarise(Total = n()) %>% 
+               mutate(Porcentaje = round(Total/sum(Total)*100,1)) %>%
+               mutate(Etiqueta = paste0(Total, " (% ", Porcentaje, ")")) %>% 
+               filter(Resultado == "Victoria") %>%
+               select(Etiqueta) %>% 
+               pull() ,"Winrate Negras", color = "black")
+  })  
   
+  output$winrateb <- renderValueBox({
+    valueBox(dataInput() %>%
+               filter(TimeControl == "300+3") %>%
+               filter(Color == "Blanco") %>% 
+               group_by(Resultado) %>% 
+               summarise(Total = n()) %>% 
+               mutate(Porcentaje = round(Total/sum(Total)*100,1)) %>%
+               mutate(Etiqueta = paste0(Total, " (% ", Porcentaje, ")")) %>% 
+               filter(Resultado == "Victoria") %>%
+               select(Etiqueta) %>% 
+               pull() ,"Winrate Blancas", color = "lime")
+  }) 
+  
+  output$elopromedio <- renderValueBox({
+    valueBox(mean(dataInput()$Elo),"Elo_Medio", color = "lime")
+  }) 
+  
+  
+  
+   
   output$plot1 <- renderPlotly({
     ggplotly(
     ggplot(dataInput() %>%
@@ -80,7 +115,7 @@ server <- function(input,output, session) {
       geom_text(aes(label = Etiqueta), color = "#ada9a9",position = position_stack(vjust = 0.5))+
       scale_fill_manual(values = c("#272643", "#e3f6f5", "#2c698d"))+
       theme_minimal()+
-      guides(fill = guide_legend(reverse = TRUE))+
+      #guides(fill = guide_legend(reverse = TRUE))+
       coord_flip()) %>% 
       layout(title = list(text = paste0('<br>','Resumen Partidas totales',
                                         '<br>')))
@@ -88,10 +123,10 @@ server <- function(input,output, session) {
   
   output$plot2 <- renderPlotly({
   fig1 <- ggplot(dataInput()%>%
-                   filter(TimeControl == "300+3"), aes(x = Fecha, y = Elo))+ #seleccionamos variables a graficar y a colorear
+                   filter(TimeControl == "300+3"), aes(x = Fecha, y = Elo_Actual))+ #seleccionamos variables a graficar y a colorear
     #geom_line(color = "#2c698d")+
     geom_point(color = "#2c698d")+
-    geom_hline(yintercept = mean(dataInput()$Elo),
+    geom_hline(yintercept = mean(dataInput()$Elo_Actual),
                color =  "#000066")+
     labs(title = paste0("                   Evolutivo Elo "),
          subtitle = "Evolución Ranking Elo",
