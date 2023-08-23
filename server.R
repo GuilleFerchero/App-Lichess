@@ -2,39 +2,46 @@ source("global.R")
 
 server <- function(input,output, session) {
   
-  dataInput <- eventReactive(input$update, {
-    get_raw_lichess(input$usuario) %>%
-      mutate(Color = case_when(White == "Guillebarracas"~"Blanco",
-                               TRUE ~ "Negro" ),
-             Elo = case_when(Color == "Blanco" ~ WhiteElo,
-                             TRUE ~ BlackElo),
-             Elo_Rival = case_when(Color == "Blanco" ~ BlackElo,
-                                   TRUE ~ WhiteElo),
-             Dif_Elo = as.numeric(Elo)-as.numeric(Elo_Rival),
-             Resultado = case_when(Color == "Blanco" & Result == "1-0" ~ "Victoria",
-                                   Color == "Blanco" & Result == "0-1" ~ "Derrota",
-                                   Color == "Negro" & Result == "0-1" ~ "Victoria",
-                                   Color == "Negro" & Result == "1-0" ~ "Derrota",
-                                   TRUE ~ "Tablas"),
-            WhiteRatingDiff = as.numeric(as.character(WhiteRatingDiff)),
-            BlackRatingDiff = as.numeric(as.character(BlackRatingDiff)),
-            Elo_Actual=ifelse(Color == "Blanco",
-                              as.numeric(Elo)+WhiteRatingDiff,
-                              as.numeric(Elo)+BlackRatingDiff),
-            Fecha = as.Date(ymd(paste0(substr(Date,1,4),substr(Date,6,7),substr(Date,9,10)))),
-            Hora = as.numeric(substr(UTCTime,1,2)),
-            Hora_arg = case_when(Hora == 3 ~ 0,
-                                 Hora == 2 ~ 23,
-                                 Hora == 1 ~ 22,
-                                 Hora == 0 ~ 21,
-                                 TRUE ~ (Hora - 3)),
-            Hora_intervalo = case_when(Hora_arg >= 8 & Hora_arg <= 13 ~ "Manana",
-                                       Hora_arg >= 14 & Hora_arg <= 19 ~ "Tarde",
-                                       TRUE ~ "Noche"),
-            weekday = wday(Fecha,1),
-            Mes = month(Fecha))%>%  
-      select(!Moves)
-  })
+
+  
+  # observeEvent(input$update,{
+  #   showNotification("Descargando datos...")
+  # })
+
+      
+      dataInput <-  eventReactive(input$update, {
+        get_raw_lichess(input$usuario) %>%
+        mutate(Color = case_when(White == "Guillebarracas"~"Blanco",
+                                 TRUE ~ "Negro" ),
+               Elo = case_when(Color == "Blanco" ~ as.numeric(WhiteElo),
+                               TRUE ~ as.numeric(BlackElo)),
+               Elo_Rival = case_when(Color == "Blanco" ~ as.numeric(BlackElo),
+                                     TRUE ~ as.numeric(WhiteElo)),
+               Dif_Elo = as.numeric(Elo)-as.numeric(Elo_Rival),
+               Resultado = case_when(Color == "Blanco" & Result == "1-0" ~ "Victoria",
+                                     Color == "Blanco" & Result == "0-1" ~ "Derrota",
+                                     Color == "Negro" & Result == "0-1" ~ "Victoria",
+                                     Color == "Negro" & Result == "1-0" ~ "Derrota",
+                                     TRUE ~ "Tablas"),
+               WhiteRatingDiff = as.numeric(as.character(WhiteRatingDiff)),
+               BlackRatingDiff = as.numeric(as.character(BlackRatingDiff)),
+               Elo_Actual=ifelse(Color == "Blanco",
+                                 as.numeric(Elo)+WhiteRatingDiff,
+                                 as.numeric(Elo)+BlackRatingDiff),
+               Fecha = as.Date(ymd(paste0(substr(Date,1,4),substr(Date,6,7),substr(Date,9,10)))),
+               Hora = as.numeric(substr(UTCTime,1,2)),
+               Hora_arg = case_when(Hora == 3 ~ 0,
+                                    Hora == 2 ~ 23,
+                                    Hora == 1 ~ 22,
+                                    Hora == 0 ~ 21,
+                                    TRUE ~ (Hora - 3)),
+               Hora_intervalo = case_when(Hora_arg >= 8 & Hora_arg <= 13 ~ "Manana",
+                                          Hora_arg >= 14 & Hora_arg <= 19 ~ "Tarde",
+                                          TRUE ~ "Noche"),
+               weekday = wday(Fecha,1),
+               Mes = month(Fecha))%>%  
+        select(!Moves)
+    })
 
   output$text <- renderText({
     paste("El usuario ", input$usuario, "registra un total de ", nrow(dataInput()), "partidas")
@@ -84,7 +91,7 @@ server <- function(input,output, session) {
   
   output$winrateb <- renderValueBox({
     valueBox(dataInput() %>%
-               filter(TimeControl == "300+3") %>%
+               #filter(TimeControl == "300+3") %>%
                filter(Color == "Blanco") %>% 
                group_by(Resultado) %>% 
                summarise(Total = n()) %>% 
@@ -96,7 +103,7 @@ server <- function(input,output, session) {
   }) 
   
   output$elopromedio <- renderValueBox({
-    valueBox(mean(dataInput()$Elo),"Elo_Medio", color = "lime")
+    valueBox(mean(dataInput()$Elo),"Elo_Medio", color = "olive")
   }) 
   
   

@@ -2,7 +2,7 @@ source("global.R")
 
 
 
-dashboardPage(                                                             
+dashboardPage(skin = "black",                                                             
   dashboardHeader(title = "Lichess App"),
   dashboardSidebar(
     textInput("usuario","Cual es tu usuario?", "guillebarracas"),
@@ -17,7 +17,8 @@ dashboardPage(
     tabItems(
       tabItem(tabName = "dashboard",
         fluidRow(
-          valueBoxOutput("fechaini", width = 3),
+          valueBoxOutput("fechaini", width = 3) %>% 
+            withSpinner(color="#0dc5c1"),
           valueBoxOutput("eloactual", width = 3),
           valueBoxOutput("winrate", width = 3)),
         fluidRow(
@@ -28,4 +29,5 @@ dashboardPage(
           box(plotlyOutput("plot1"), width = 4),
           box(plotlyOutput("plot2"), width = 8))),
     tabItem(tabName = "rawdata",
-          DTOutput("table")))))
+          DTOutput("table"))))
+    )
