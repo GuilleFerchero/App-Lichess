@@ -14,8 +14,8 @@ for( package in c("shiny", "dplyr", "datasets", "shinycssloaders","shinydashboar
 
 ##################################################################################################################################################################
 
-load_data <- function() {
-  Sys.sleep(2)
-  hide("loading_page")
-  show("main_content")
-}
+# load_data <- function() {
+#   Sys.sleep(2)
+#   hide("loading_page")
+#   show("main_content")
+# }

@@ -103,7 +103,7 @@ server <- function(input,output, session) {
   }) 
   
   output$elopromedio <- renderValueBox({
-    valueBox(mean(dataInput()$Elo),"Elo_Medio", color = "olive")
+    valueBox(round(mean(dataInput()$Elo),2),"Elo_Medio", color = "olive")
   }) 
   
   
@@ -155,7 +155,7 @@ server <- function(input,output, session) {
   
   
   output$table <- renderDT(dataInput() %>%
-                             select(!c(Event,Date,UTCDate)) %>% 
+                               select(!c(Event,Date,UTCDate,Fecha,WhiteRatingDiff,BlackRatingDiff,Result,Mes,Hora,UTCTime, WhiteElo,BlackElo,Opening,Username)) %>% 
                              mutate(Enlace = paste0("<a href='", Site, "' target= '_blank'>", "Ver Partida", "</a>")), 
                            escape = FALSE,
                            options = list(scrollX = TRUE))

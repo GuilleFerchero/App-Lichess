@@ -18,7 +18,7 @@ dashboardPage(skin = "black",
       tabItem(tabName = "dashboard",
         fluidRow(
           valueBoxOutput("fechaini", width = 3) %>% 
-            withSpinner(color="#0dc5c1"),
+            withSpinner(color="#0dc5c1"), #esto agrega el spinner de carga
           valueBoxOutput("eloactual", width = 3),
           valueBoxOutput("winrate", width = 3)),
         fluidRow(
