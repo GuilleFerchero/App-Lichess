@@ -347,6 +347,11 @@ fig3
 
 
 
+
+
+
+
+
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 
 
@@ -358,7 +363,7 @@ Tabla2 <- DatosBlitz %>%
   mutate(Etiqueta = paste0(" (% ", Porcentaje, ")"))
 
 
-fig3 <- ggplot(Tabla2, aes( x =Hora_intervalo , y = Porcentaje, fill = Resultado))+
+fig3 <- ggplot(Tabla2, aes( x =factor(Hora_intervalo, level=c("Mañana","Tarde","Noche")) , y = Porcentaje, fill = Resultado))+
   geom_bar( stat = "identity", width = 0.8)+
   geom_text(aes(label = Etiqueta), position = position_stack(vjust = 0.5),
             color = case_when(
@@ -371,7 +376,7 @@ fig3 <- ggplot(Tabla2, aes( x =Hora_intervalo , y = Porcentaje, fill = Resultado
        subtitle = "Evolución Ranking Elo",
        caption = "API Lichess",
        y = "%",
-       x = "momento del día",
+       x = "Momento del día",
        yintercept = "Promedio")+
   theme_minimal()
 
@@ -379,10 +384,56 @@ fig3 <- ggplotly(fig3)
 
 fig3
 
-#FALTA REORGANIZAR CATEGORÍAS
+#FALTA REORGANIZAR CATEGORÍAS (SOLUCIONADO CON factor(Hora_intervalo, level=c("Mañana","Tarde","Noche")))
 
 
 ```
+
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+#POR MES
+
+Tabla3 <- DatosBlitz %>%
+  select(Mes,Resultado) %>%
+  group_by(Mes,Resultado) %>%
+  summarise(Total = n()) %>%
+  mutate(Porcentaje = round(Total/sum(Total)*100,1))%>%
+  mutate(Etiqueta = paste0(" (% ", Porcentaje, ")"))
+
+
+fig4 <- ggplot(Tabla3, aes( x =Mes , y = Porcentaje, fill = Resultado))+
+  geom_bar( stat = "identity", width = 0.8)+
+  geom_text(aes(label = Etiqueta), position = position_stack(vjust = 0.5),
+            color = case_when(
+              Tabla3$Resultado == "Victoria" ~ "black",
+              Tabla3$Resultado == "Derrota" ~ "white",
+              Tabla3$Resultado == "Tablas" ~ "#ada9a9",
+            ))+
+  scale_fill_manual(values = c("#272643", "#e3f6f5", "#2c698d"))+
+    labs(title = paste0("Resultado según mes ",Desde," - ",Hasta),
+       subtitle = "Evolución Ranking Elo",
+       caption = "API Lichess",
+       y = "%",
+       x = "Mes",
+       yintercept = "Promedio")+
+  theme_minimal()
+
+fig4 <- ggplotly(fig4)
+
+fig4
+
+
+
+
+```
+
+
+
+
+
+
 
 
 
