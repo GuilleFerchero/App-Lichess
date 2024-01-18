@@ -11,7 +11,8 @@ server <- function(input,output, session) {
       
       dataInput <-  eventReactive(input$update, {
         get_raw_lichess(input$usuario) %>%
-        mutate(Color = case_when(White == "Guillebarracas"~"Blanco",
+          #filter(TimeControl == input$tipo) %>%
+          mutate(Color = case_when(White == input$usuario ~"Blanco",
                                  TRUE ~ "Negro" ),
                Elo = case_when(Color == "Blanco" ~ as.numeric(WhiteElo),
                                TRUE ~ as.numeric(BlackElo)),
@@ -44,11 +45,12 @@ server <- function(input,output, session) {
     })
 
   output$text <- renderText({
-    paste("El usuario ", input$usuario, "registra un total de ", nrow(dataInput()), "partidas")
+    paste("El usuario ", input$usuario, "registra un total de ", nrow(dataInput()), "partidas. Se muestran datos de ",nrow(dataInput() %>% filter(TimeControl == input$tipo)) ,"partidas bajo la modalidad ",input$tipo)
   })
     
   output$eloactual <- renderValueBox({
-    valueBox(dataInput() %>% 
+    valueBox(dataInput() %>%
+               filter(TimeControl == input$tipo) %>%
                select(Fecha, Elo_Actual) %>% 
                arrange(desc(Fecha)) %>%
                select(Elo_Actual) %>% 
@@ -56,7 +58,8 @@ server <- function(input,output, session) {
   })
 
   output$fechaini <- renderValueBox({
-    valueBox(dataInput() %>% 
+    valueBox(dataInput() %>%
+               filter(TimeControl == input$tipo) %>%
                select(Fecha) %>% 
                arrange(Fecha) %>% 
                head(1), "Fecha 1era partida", color = "light-blue")
@@ -64,7 +67,7 @@ server <- function(input,output, session) {
   
   output$winrate <- renderValueBox({
       valueBox(dataInput() %>%
-                 #filter(TimeControl == "300+3") %>%
+                 filter(TimeControl == input$tipo) %>%
                  head(30) %>% 
                  group_by(Resultado) %>% 
                  summarise(Total = n()) %>% 
@@ -78,7 +81,7 @@ server <- function(input,output, session) {
  
   output$winraten <- renderValueBox({
     valueBox(dataInput() %>%
-               #filter(TimeControl == "300+3") %>%
+               filter(TimeControl == input$tipo) %>%
                filter(Color == "Negro") %>% 
                group_by(Resultado) %>% 
                summarise(Total = n()) %>% 
@@ -91,7 +94,7 @@ server <- function(input,output, session) {
   
   output$winrateb <- renderValueBox({
     valueBox(dataInput() %>%
-               #filter(TimeControl == "300+3") %>%
+               filter(TimeControl == input$tipo) %>%
                filter(Color == "Blanco") %>% 
                group_by(Resultado) %>% 
                summarise(Total = n()) %>% 
@@ -112,7 +115,7 @@ server <- function(input,output, session) {
   output$plot1 <- renderPlotly({
     ggplotly(
     ggplot(dataInput() %>%
-             filter(TimeControl == "300+3") %>% 
+             filter(TimeControl == input$tipo) %>%
              select(Resultado) %>% 
              group_by(Resultado) %>% 
              summarise(Total = n()) %>% 
@@ -134,7 +137,7 @@ server <- function(input,output, session) {
   output$plot2 <- renderPlotly({
     ggplotly(
       ggplot(dataInput() %>%
-               filter(TimeControl == "300+3") %>% 
+               filter(TimeControl == input$tipo) %>%
                filter(Dif_Elo<0) %>%
                select(Resultado) %>% 
                group_by(Resultado) %>% 
@@ -155,7 +158,7 @@ server <- function(input,output, session) {
   output$plot3 <- renderPlotly({
     ggplotly(
       ggplot(dataInput() %>%
-               filter(TimeControl == "300+3") %>% 
+               filter(TimeControl == input$tipo) %>% 
                filter(Dif_Elo>0) %>%
                select(Resultado) %>% 
                group_by(Resultado) %>% 
@@ -176,7 +179,8 @@ server <- function(input,output, session) {
   
   output$plot4 <- renderPlotly({
     fig1 <- ggplot(dataInput()%>%
-                     filter(TimeControl == "300+3"), aes(x = Fecha, y = Elo_Actual))+ #seleccionamos variables a graficar y a colorear
+                     filter(TimeControl == input$tipo),
+                   aes(x = Fecha, y = Elo_Actual))+ #seleccionamos variables a graficar y a colorear
       #geom_line(color = "#2c698d")+
       geom_point(color = "#2c698d")+
       geom_hline(yintercept = mean(dataInput()$Elo_Actual),
@@ -202,6 +206,7 @@ server <- function(input,output, session) {
   
   
   output$table <- renderDT(dataInput() %>%
+                             filter(TimeControl == input$tipo) %>%
                                select(!c(Event,Date,UTCDate,Fecha,WhiteRatingDiff,BlackRatingDiff,Result,Mes,Hora,UTCTime, WhiteElo,BlackElo,Opening,Username)) %>% 
                              mutate(Enlace = paste0("<a href='", Site, "' target= '_blank'>", "Ver Partida", "</a>")), 
                            escape = FALSE,

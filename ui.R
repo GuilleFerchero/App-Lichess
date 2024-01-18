@@ -8,6 +8,7 @@ dashboardPage(skin = "black",
     textInput("usuario","Cual es tu usuario?", "guillebarracas"),
     actionButton("update","buscar"),
     withSpinner(textOutput("text")),#esto agrega el spinner de carga
+    selectInput("tipo","Tipo de partida",choices = c("300+3","120+1","60+0","180+0","180+2","300+0"," ")),
     sidebarMenu(
       menuItem("Tablero", tabName = "dashboard"),
       menuItem("Partidas", tabName = "rawdata")
