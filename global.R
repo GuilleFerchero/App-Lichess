@@ -19,3 +19,9 @@ for( package in c("shiny", "dplyr","bslib", "datasets", "shinycssloaders","shiny
 #   hide("loading_page")
 #   show("main_content")
 # }
+
+################PASOS#################
+
+#ARREGLAR GRÁFICOS (LEYENDA ABAJO ,  TITULOS CLAROS, QUITAR LABELS DE LAS BARRAS, VER EVOLUTIVO)
+#AGREGAR GRAFICOS (WINRATE POR DIA DE SEMANA / MOMENTO DEL DIA)
+#MEJORAR ESTILO GENERAL (VER CSS)
